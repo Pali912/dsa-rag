@@ -3,3 +3,4 @@ faster-whisper
 sentence-transformers
 qdrant-client
 python-dotenv
+groq
