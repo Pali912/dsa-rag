@@ -4,3 +4,4 @@ sentence-transformers
 qdrant-client
 python-dotenv
 groq
+rank-bm25
