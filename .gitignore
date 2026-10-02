@@ -2,5 +2,8 @@
 data/audio/
 data/transcripts/
 data/chunks.jsonl
+eval_checkpoint.json
+eval_results.json
+all_answers.txt
 __pycache__/
 *.pyc
