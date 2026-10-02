@@ -8,8 +8,8 @@ Built to solve a real problem: revising 60+ videos of lecture content without re
 everything from scratch, and to demonstrate an end-to-end AI engineering pipeline for a
 software engineering resume.
 
-> **Status: Weekend 1 (data pipeline) complete.** Retrieval + LLM generation, evaluation,
-> and public deployment are in progress — see [Roadmap](#roadmap).
+> **Status: Data pipeline, hybrid retrieval, reranking, generation, and evaluation
+> are all complete.** Public deployment is in progress — see [Roadmap](#roadmap).
 
 ---
 
@@ -38,12 +38,12 @@ software engineering resume.
 | Chunking | custom Python, timestamp-preserving |
 | Embeddings | `all-MiniLM-L6-v2` (sentence-transformers) |
 | Vector DB | Qdrant Cloud (free tier) |
-| Sparse retrieval | BM25 *(planned)* |
-| Reranker | BGE reranker *(planned)* |
-| LLM | Groq (Llama 3.3 / GPT-OSS-120B) *(planned)* |
+| Sparse retrieval | BM25 (via Reciprocal Rank Fusion with vector search) |
+| Reranker | BGE cross-encoder (`bge-reranker-base`) |
+| LLM | Groq (`openai/gpt-oss-120b`) |
 | Backend | FastAPI *(planned)* |
 | Hosting | HuggingFace Spaces *(planned)* |
-| Eval | RAGAS *(planned)* |
+| Eval | RAGAS (answer relevancy) + custom faithfulness scorer |
 
 ---
 
@@ -92,15 +92,43 @@ python test_search.py "your DSA question here"
 
 ---
 
+## Evaluation
+
+Evaluated against 15 hand-written golden questions spanning the dataset's topics
+(graphs, sliding window, DP, greedy, prefix sum, etc.).
+
+| Metric | Score |
+|---|---|
+| Faithfulness (custom 1-5 LLM-judge scorer, normalized) | **0.783** |
+| Answer Relevancy (RAGAS) | **0.739** |
+
+**Methodology note:** RAGAS's built-in `faithfulness` metric requires the judge
+LLM to generate detailed multi-step structured output (claim extraction +
+verification), which exceeded the output-token-per-minute limits of the
+free-tier Groq models available for this project. A lightweight custom
+faithfulness scorer (single-call, 1-5 rating) was used instead, which fits
+within those limits while still measuring whether answers are grounded in the
+retrieved context.
+
+**Known limitation:** 1 of 15 questions ("What is Kahn's algorithm used for?")
+returned no answer, since it's only a brief secondary mention within one video
+rather than its own topic, and retrieval didn't surface it strongly enough to
+pass the grounding bar. This is a real, common RAG failure mode (recall on
+under-represented sub-topics) rather than a bug, and a good target for future
+retrieval tuning.
+
+See `07_eval.py` for the full evaluation harness, and `eval_results.json` for
+per-question scores.
+
 ## Roadmap
 
 - [x] Audio download + transcription pipeline (resumable)
 - [x] Timestamp-preserving chunking
 - [x] Embedding + Qdrant Cloud upload
-- [ ] Hybrid retrieval (BM25 + vector)
-- [ ] BGE reranking
-- [ ] Groq LLM answer generation with citations
-- [ ] RAGAS evaluation (faithfulness, context precision, answer relevancy)
+- [x] Hybrid retrieval (BM25 + vector)
+- [x] BGE reranking
+- [x] Groq LLM answer generation with citations
+- [x] Evaluation (custom faithfulness scorer + RAGAS answer relevancy)
 - [ ] FastAPI backend + simple frontend
 - [ ] Public deployment on HuggingFace Spaces
 

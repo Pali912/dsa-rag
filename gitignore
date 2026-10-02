@@ -1,0 +1,7 @@
+.env
+data/audio/
+data/transcripts/
+data/chunks.jsonl
+eval_checkpoint.json
+__pycache__/
+*.pyc
