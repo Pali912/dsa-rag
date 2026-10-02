@@ -11,13 +11,11 @@ Run locally:
 Then open http://127.0.0.1:8000/docs for an interactive test UI.
 """
 
-import json
 import os
 import re
 import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
@@ -28,7 +26,6 @@ from rank_bm25 import BM25Okapi
 from sentence_transformers import CrossEncoder, SentenceTransformer
 from groq import Groq
 
-CHUNKS_PATH = Path("data/chunks.jsonl")
 COLLECTION_NAME = "dsa_lectures"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 RERANKER_MODEL = "BAAI/bge-reranker-base"
@@ -61,8 +58,11 @@ state: dict = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     load_dotenv()
-    print("Loading chunks and building BM25 index...")
-    state["chunks"] = load_chunks()
+    print("Connecting to Qdrant...")
+    state["qdrant"] = QdrantClient(url=os.environ["QDRANT_URL"], api_key=os.environ["QDRANT_API_KEY"])
+
+    print("Loading chunks from Qdrant and building BM25 index...")
+    state["chunks"] = load_chunks_from_qdrant(state["qdrant"])
     state["chunks_by_id"] = {c["chunk_id"]: c for c in state["chunks"]}
     state["bm25"] = build_bm25_index(state["chunks"])
 
@@ -71,9 +71,6 @@ async def lifespan(app: FastAPI):
 
     print("Loading reranker model...")
     state["reranker"] = CrossEncoder(RERANKER_MODEL)
-
-    print("Connecting to Qdrant...")
-    state["qdrant"] = QdrantClient(url=os.environ["QDRANT_URL"], api_key=os.environ["QDRANT_API_KEY"])
 
     print("Connecting to Groq...")
     state["groq"] = Groq(api_key=os.environ["GROQ_API_KEY"])
@@ -101,13 +98,24 @@ def tokenize(text: str) -> list[str]:
     return re.findall(r"[a-z0-9]+", text.lower())
 
 
-def load_chunks() -> list[dict]:
+def load_chunks_from_qdrant(qdrant_client: QdrantClient) -> list[dict]:
+    """Pulls all chunk payloads from Qdrant via scroll, so no local transcript
+    file needs to be deployed (avoids publicly exposing raw transcript text
+    via the hosting platform's file browser)."""
     chunks = []
-    with CHUNKS_PATH.open(encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                chunks.append(json.loads(line))
+    offset = None
+    while True:
+        points, offset = qdrant_client.scroll(
+            collection_name=COLLECTION_NAME,
+            limit=250,
+            offset=offset,
+            with_payload=True,
+            with_vectors=False,
+        )
+        for p in points:
+            chunks.append(p.payload)
+        if offset is None:
+            break
     return chunks
 
 
