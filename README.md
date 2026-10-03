@@ -8,8 +8,10 @@ Built to solve a real problem: revising 60+ videos of lecture content without re
 everything from scratch, and to demonstrate an end-to-end AI engineering pipeline for a
 software engineering resume.
 
-> **Status: Data pipeline, hybrid retrieval, reranking, generation, and evaluation
-> are all complete.** Public deployment is in progress — see [Roadmap](#roadmap).
+> **Status: Complete.** Data pipeline, hybrid retrieval, reranking, generation,
+> evaluation, and public deployment are all done.
+>
+> **Live demo:** https://huggingface.co/spaces/Pali912/dsa-rag
 
 ---
 
@@ -129,8 +131,10 @@ per-question scores.
 - [x] BGE reranking
 - [x] Groq LLM answer generation with citations
 - [x] Evaluation (custom faithfulness scorer + RAGAS answer relevancy)
-- [ ] FastAPI backend + simple frontend
-- [ ] Public deployment on HuggingFace Spaces
+- [x] FastAPI backend (`app.py`) with a built-in HTML frontend, for local use
+- [x] Public deployment on HuggingFace Spaces (`gradio_app.py`) - deployed as
+      Gradio rather than the FastAPI/Docker version, since HF Spaces now
+      requires a paid plan for Docker Spaces; Gradio Spaces remain free
 
 ---
 
